@@ -3,3 +3,6 @@ Revision history for Perl extension Sub::Assert.
 1.01  Mon May 26 20:15:22 2003
 	- original version as uploaded to CPAN
 
+1.10  Wed May 28 22:43:57 2003
+	- Added the Sub::Assert::Nothing functionality.
+

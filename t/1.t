@@ -25,7 +25,6 @@ assert(
       )
 ) eq 'CODE', 'assert returns code ref');
 
-double(2);
 $err = undef;
 my $d = eval "double(2)";
 ok((not defined $err and $d == 4), "assertion did not croak.");

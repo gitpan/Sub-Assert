@@ -11,7 +11,8 @@ our @ISA = qw(Exporter);
 our @EXPORT = qw(
 	&assert
 );
-our $VERSION = '1.01';
+use vars qw/$VERSION/;
+$VERSION = '1.10';
 
 use Carp qw/croak carp/;
 
@@ -262,6 +263,21 @@ The Sub::Assert module aims at providing design-by-contract like
 subroutine pre- and postconditions. Furthermore, it allows restricting
 the subroutine's calling context.
 
+There's one big gotcha with this: It's slow. For every call to
+subroutines you use assert() with, you pay for the error checking
+with an extra subroutine call, some memory and some additional code
+that's executed.
+
+Fortunately, there's a workaround for mature software
+which does not require you to edit a lot of your code. Instead of
+use()ing Sub::Assert, you simply use Sub::Assert::Nothing and leave
+the assertions intact. While you still suffer the calls to assert()
+once, you won't pay the run-time penalty usually associated with
+subroutine pre- and postconditions. Of course, you lose the benefits,
+too, but as stated previously, this is a workaround in case you
+want the verification at development time, but prefer speed in
+production without refactoring your code.
+
 =head2 THE ASSERT SUBROUTINE
 
 The assert subroutine takes a key/value list of named parameters.
@@ -376,5 +392,8 @@ Steffen Mueller E<lt>assert-module at steffen-mueller dot netE<gt>
 =head1 SEE ALSO
 
 L<perl>.
+
+Look for new versions of this module on CPAN or at
+http://steffen-mueller.net
 
 =cut

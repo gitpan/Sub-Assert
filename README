@@ -1,9 +1,12 @@
-Sub::Assert version 1.01
+Sub::Assert version 1.10
 ========================
 
 The Sub::Assert module aims at providing design-by-contract like
 subroutine pre- and postconditions. Furthermore, it allows restricting
 the subroutine's calling context.
+
+Look for new versions of this module on CPAN or at
+http://steffen-mueller.net
 
 INSTALLATION
 

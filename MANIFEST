@@ -3,4 +3,5 @@ MANIFEST
 Makefile.PL
 README
 lib/Sub/Assert.pm
+lib/Sub/Assert/Nothing.pm
 t/1.t
