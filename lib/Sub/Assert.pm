@@ -12,7 +12,7 @@ our @EXPORT = qw(
 	&assert
 );
 use vars qw/$VERSION/;
-$VERSION = '1.10';
+$VERSION = '1.20';
 
 use Carp qw/croak carp/;
 
@@ -43,11 +43,14 @@ sub assert {
 		croak "Subroutine argument to assert is invalid."
 	}
 
+	$params{action} = 'croak' unless defined $params{action};
 	my $action = $package . '::' . $params{action};
-	$action = $package . '::croak' unless defined $action;
 
 	my $precond = $params{pre};
-	if (ref($precond) eq '') {
+	if (not defined $precond) {
+		$precond = [];
+	}
+	elsif (ref($precond) eq '') {
 		$precond = [$precond];
 	}
 	elsif (ref($precond) eq 'ARRAY') {
@@ -61,7 +64,10 @@ sub assert {
 	}
 
 	my $postcond = $params{post};
-	if (ref($postcond) eq '') {
+	if (not defined $postcond) {
+		$postcond = [];
+	}
+	elsif (ref($postcond) eq '') {
 		$postcond = [$postcond];
 	}
 	elsif (ref($postcond) eq 'ARRAY') {
