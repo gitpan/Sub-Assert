@@ -12,9 +12,10 @@ our @EXPORT = qw(
 	&assert
 );
 use vars qw/$VERSION/;
-$VERSION = '1.20';
+$VERSION = '1.21';
 
 use Carp qw/croak carp/;
+
 
 sub assert {
 }
@@ -67,6 +68,11 @@ production without refactoring your code.
 =head2 EXPORT
 
 Exports the 'assert' subroutine to the caller's namespace.
+
+=head2 assert
+
+The implementation of the assert subroutine exported by this
+package is a no-op.
 
 =head1 AUTHOR
 

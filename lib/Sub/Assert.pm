@@ -12,7 +12,7 @@ our @EXPORT = qw(
 	&assert
 );
 use vars qw/$VERSION/;
-$VERSION = '1.20';
+$VERSION = '1.21';
 
 use Carp qw/croak carp/;
 
@@ -284,7 +284,7 @@ too, but as stated previously, this is a workaround in case you
 want the verification at development time, but prefer speed in
 production without refactoring your code.
 
-=head2 THE ASSERT SUBROUTINE
+=head2 assert
 
 The assert subroutine takes a key/value list of named parameters.
 
