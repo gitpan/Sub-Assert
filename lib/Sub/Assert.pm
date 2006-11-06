@@ -12,7 +12,7 @@ our @EXPORT = qw(
 	&assert
 );
 use vars qw/$VERSION/;
-$VERSION = '1.21';
+$VERSION = '1.22';
 
 use Carp qw/croak carp/;
 
@@ -393,7 +393,14 @@ Exports the 'assert' subroutine to the caller's namespace.
 
 =head1 AUTHOR
 
-Steffen Mueller E<lt>assert-module at steffen-mueller dot netE<gt>
+Steffen Mueller E<lt>smueller@cpan.orgE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (C) 2003-2006 Steffen Mueller
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself. 
 
 =head1 SEE ALSO
 

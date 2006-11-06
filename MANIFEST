@@ -4,5 +4,8 @@ Makefile.PL
 README
 lib/Sub/Assert.pm
 lib/Sub/Assert/Nothing.pm
-t/1.t
+t/00pod.t
+t/00podcover.t
+t/01basic.t
+t/02basic.t
 META.yml                                 Module meta-data (added by MakeMaker)
