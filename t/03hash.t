@@ -1,9 +1,9 @@
 use Test::More tests => 8;
 BEGIN { use_ok('Sub::Assert') };
 
+use 5.006;
 use strict;
 use warnings;
-use 5.006;
 
 sub double {
     my $x = shift;
@@ -17,7 +17,9 @@ sub darnedtestmodule {
 
 ok(ref(
 assert(
-       pre     => '$PARAM[0] > 0',
+       pre     => {
+         'input positive' => '$PARAM[0] > 0',
+       },
        post    => '$VOID || $RETURN > $PARAM[0]',
        sub     => 'double',
        context => 'novoid',
@@ -43,8 +45,10 @@ sub faultysqrt {
 }
 
 assert
-       pre    => '$PARAM[0] >= 0',
-       post   => '$VOID || $RETURN <= $PARAM[0]',
+       pre    => {
+         'input positive' => '$PARAM[0] >= 0',
+       },
+       post   => ['$VOID || $RETURN <= $PARAM[0]'],
        sub    => 'faultysqrt',
        action => 'darnedtestmodule';
   
@@ -61,15 +65,15 @@ sub anotherfunc {
 
 
 assert
-       pre    => [
-        '@PARAM == 2',
-       ],
-       post   => [
-        '!$VOID',
-        '$RETURN > 0',
-        '$PARAM[0]*$PARAM[1]-1.e-12 < $RETURN',
-        '$PARAM[0]*$PARAM[1]+1.e-12 > $RETURN',
-       ],
+       pre    => {
+        'two input parameters' => '@PARAM == 2',
+       },
+       post   => {
+        'not void' => '!$VOID',
+        'return value positive' => '$RETURN > 0',
+        'return value is product, upper limit' => '$PARAM[0]*$PARAM[1]-1.e-12 < $RETURN',
+        'return value is product, lower limit' => '$PARAM[0]*$PARAM[1]+1.e-12 > $RETURN',
+       },
        sub    => 'anotherfunc',
        action => 'darnedtestmodule';
  

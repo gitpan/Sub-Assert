@@ -9,212 +9,236 @@ require Exporter;
 our @ISA = qw(Exporter);
 
 our @EXPORT = qw(
-	&assert
+  assert
 );
-use vars qw/$VERSION/;
-$VERSION = '1.22';
+our $VERSION = '1.23';
 
 use Carp qw/croak carp/;
 
 sub assert {
-	my %params = @_;
-	my $sub    = $params{sub};
-	defined $sub or croak "assert missing the subroutine to work with.";
+  my %params = @_;
+  my $sub    = $params{sub};
+  defined $sub or croak("assert missing the subroutine to work with");
 
-	my $package;
-	my $subref;
-	if (ref $sub eq 'CODE') {
-		$subref = $sub;
-	}
-	elsif (ref $sub eq '') {
-		($package, undef, undef) = caller();
-		defined $package
-			or croak "assert could not determine " .
-				"caller's package.";
-		no strict 'refs';
-		$subref = *{"${package}::$sub"}{CODE};
-		use strict 'refs';
-		defined $subref and ref($subref) eq 'CODE'
-			or croak "assert finds that " .
-				 "there is no '$sub' subroutine in " .
-				 "package '$package'.";
-	}
-	else {
-		croak "Subroutine argument to assert is invalid."
-	}
+  my $package;
+  my $subref;
+  if (ref $sub eq 'CODE') {
+    $subref = $sub;
+  }
+  elsif (ref $sub eq '') {
+    ($package, undef, undef) = caller();
+    defined $package
+      or croak("assert could not determine caller package");
+    no strict 'refs';
+    $subref = *{"${package}::$sub"}{CODE};
+    use strict 'refs';
+    defined $subref and ref($subref) eq 'CODE'
+      or croak("assert finds that there is no '$sub' subroutine in package '$package'");
+  }
+  else {
+    croak("Subroutine argument to assert is invalid");
+  }
 
-	$params{action} = 'croak' unless defined $params{action};
-	my $action = $package . '::' . $params{action};
+  $params{action} = 'croak' unless defined $params{action};
+  my $action = $package . '::' . $params{action};
 
-	my $precond = $params{pre};
-	if (not defined $precond) {
-		$precond = [];
-	}
-	elsif (ref($precond) eq '') {
-		$precond = [$precond];
-	}
-	elsif (ref($precond) eq 'ARRAY') {
-		foreach (@$precond) {
-			croak "Invalid preconditions."
-				if ref($_) ne '';
-		}
-	}
-	else {
-		croak "Invalid preconditions.";
-	}
+  my $precond = _normalize_conditions($params{pre}, 'precondition');
 
-	my $postcond = $params{post};
-	if (not defined $postcond) {
-		$postcond = [];
-	}
-	elsif (ref($postcond) eq '') {
-		$postcond = [$postcond];
-	}
-	elsif (ref($postcond) eq 'ARRAY') {
-		foreach (@$postcond) {
-			croak "Invalid postconditions."
-				if ref($_) ne '';
-		}
-	}
-	else {
-		croak "Invalid postconditions.";
-	}
+  my $postcond = _normalize_conditions($params{post}, 'postcondition');
 
-	my $context;
-	if (exists $params{context}) {
-		unless (defined $params{context} and
-			$params{context} eq 'list' ||
-			$params{context} eq 'scalar' ||
-			$params{context} eq 'void' ||
-			$params{context} eq 'novoid' ||
-			$params{context} eq 'any'
-		) {
-			croak "Invalid context specified for assertion.";
-		}
-		$context = $params{context};
-	}
-	else {
-		$context = 'any';
-	}
-	
-	my $new_sub_text = "sub {\nmy \@PARAM = \@_;\n";
+  my $context;
+  if (exists $params{context}) {
+    unless (defined $params{context} and
+      $params{context} eq 'list' ||
+      $params{context} eq 'scalar' ||
+      $params{context} eq 'void' ||
+      $params{context} eq 'novoid' ||
+      $params{context} eq 'any'
+    ) {
+      croak("Invalid context specified for assertion");
+    }
+    $context = $params{context};
+  }
+  else {
+    $context = 'any';
+  }
+  
+  my $new_sub_text = "sub {\nmy \@PARAM = \@_;\n";
 
-	if ($context eq 'list') {
-		$new_sub_text .= "unless (wantarray()) {\n" .
-				 "my \$context = (defined wantarray() ?\n" .
-			 	 "		  'scalar' : 'void');\n" .
-				 "$action(\"" .
-				 (ref($sub) eq 'CODE' ?
-					 'C' :
-					 "${package}::$sub c"
-				 ) .
-				 'alled in $context context.")' .
-				 "}\n";
-	}
-	elsif ($context eq 'scalar') {
-		$new_sub_text .= "unless (defined(wantarray()) and not " .
-				 "wantarray()) {\n" .
-				 "my \$context = (wantarray() ?\n" .
-			 	 "		  'list' : 'void');\n" .
-				 "$action(\"" .
-				 (ref($sub) eq 'CODE' ?
-					 'C' :
-					 "${package}::$sub c"
-				 ) .
-				 'alled in $context context.")' .
-				 "}\n";
-	}
-	elsif ($context eq 'novoid') {
-		$new_sub_text .= "unless (defined wantarray()) {\n" .
-				 "$action(\"" .
-				 (ref($sub) eq 'CODE' ?
-					 'C' :
-					 "${package}::$sub c"
-				 ) .
-				 'alled in void context.")' .
-				 "}\n";
-	}
-	elsif ($context eq 'void') {
-		$new_sub_text .= "unless (not defined wantarray()) {\n" .
-				 "my \$context = (wantarray() ?\n" .
-			 	 "		  'list' : 'scalar');\n" .
-				 "$action(\"" .
-				 (ref($sub) eq 'CODE' ?
-					 'C' :
-					 "${package}::$sub c"
-				 ) .
-				 'alled in $context context.")' .
-				 "}\n";
-	}
+  if ($context eq 'list') {
+    $new_sub_text .= "unless (wantarray()) {\n" .
+         "my \$context = (defined wantarray() ?\n" .
+          "      'scalar' : 'void');\n" .
+         "$action(\"" .
+         (ref($sub) eq 'CODE' ?
+           'C' :
+           "${package}::$sub c"
+         ) .
+         'alled in $context context.")' .
+         "}\n";
+  }
+  elsif ($context eq 'scalar') {
+    $new_sub_text .= "unless (defined(wantarray()) and not " .
+         "wantarray()) {\n" .
+         "my \$context = (wantarray() ?\n" .
+          "      'list' : 'void');\n" .
+         "$action(\"" .
+         (ref($sub) eq 'CODE' ?
+           'C' :
+           "${package}::$sub c"
+         ) .
+         'alled in $context context.")' .
+         "}\n";
+  }
+  elsif ($context eq 'novoid') {
+    $new_sub_text .= "unless (defined wantarray()) {\n" .
+         "$action(\"" .
+         (ref($sub) eq 'CODE' ?
+           'C' :
+           "${package}::$sub c"
+         ) .
+         'alled in void context.")' .
+         "}\n";
+  }
+  elsif ($context eq 'void') {
+    $new_sub_text .= "unless (not defined wantarray()) {\n" .
+         "my \$context = (wantarray() ?\n" .
+          "      'list' : 'scalar');\n" .
+         "$action(\"" .
+         (ref($sub) eq 'CODE' ?
+           'C' :
+           "${package}::$sub c"
+         ) .
+         'alled in $context context.")' .
+         "}\n";
+  }
 
-	my $precond_no = 1;
-	foreach my $pre (@$precond) {
-		$new_sub_text .= "do{\n".$pre."\n}\nor $action(\"Precondition " .
-				 "$precond_no " .
-				 (ref($sub) eq 'CODE' ?
-					 '' :
-					 "for ${package}::$sub "
-				 ) .
-				 "failed.\");\n\n";
-		$precond_no++;
-	}
-	$new_sub_text .= <<'HERE';
+  foreach my $pre_name (keys %$precond) {
+    if ($pre_name eq '_') {
+      my $pre_array = $precond->{'_'};
+      foreach my $pre_no (1..@$pre_array) {
+        $new_sub_text .= 
+             "do{\n".$pre_array->[$pre_no-1]
+             . "\n}\nor $action(\"Precondition "
+             . "$pre_no "
+             . (ref($sub) eq 'CODE' ? '' : "for ${package}::$sub ")
+             . "failed.\");\n\n";
+      }
+    }
+    else {
+      $new_sub_text .= 
+           "do{\n".$precond->{$pre_name}
+           . "\n}\nor $action(\"Precondition "
+           . "'$pre_name' "
+           . (ref($sub) eq 'CODE' ? '' : "for ${package}::$sub ")
+           . "failed.\");\n\n";
+    }
+  }
+  $new_sub_text .= <<'HERE';
 my @RETURN;
 my $RETURN;
 my $VOID;
 if (wantarray()) {
-	@RETURN = $SUBROUTINEREF->(@PARAM);
-	$RETURN = $RETURN[0] if @RETURN;
+  @RETURN = $SUBROUTINEREF->(@PARAM);
+  $RETURN = $RETURN[0] if @RETURN;
 }
 elsif (defined wantarray()) {
-	$RETURN = $SUBROUTINEREF->(@PARAM);
-	@RETURN = ($RETURN);
+  $RETURN = $SUBROUTINEREF->(@PARAM);
+  @RETURN = ($RETURN);
 }
 else {
-	$VOID = 1;
-	$SUBROUTINEREF->(@PARAM);
+  $VOID = 1;
+  $SUBROUTINEREF->(@PARAM);
 }
 HERE
-	my $postcond_no = 1;
-	foreach my $post (@$postcond) {
-		$new_sub_text .= "do{\n".$post."\n}\nor $action(\"" .
-				 "Postcondition $postcond_no " .
-				 (ref($sub) eq 'CODE' ?
-					 '' :
-					 "for ${package}::$sub "
-				 ) .
-				 "failed.\");\n\n";
-		$postcond_no++;
-	}
-	
-	$new_sub_text .= ($context eq 'list' ?
-				"return \@RETURN;\n}\n" :
-				"return \$RETURN;\n}\n"
-			 );
-	my ($new_sub_ref, $error) =
-		_generate_assertion_subroutine($subref, $new_sub_text);
-	
-	if ($error) {
-		croak "Compilation of assertions failed: $error.\n" .
-		      "$new_sub_text";
-	}
-	if (ref($sub) eq 'CODE') {
-		return $new_sub_ref;
-	}
-	else {
-		no strict;
-		no warnings;
-		*{"${package}::$sub"} = $new_sub_ref;
-		use strict;
-		use warnings;
-	}
-	return $new_sub_ref;
+
+  foreach my $post_name (keys %$postcond) {
+    if ($post_name eq '_') {
+      my $post_array = $postcond->{'_'};
+      foreach my $post_no (1..@$post_array) {
+        $new_sub_text .= 
+             "do{\n".$post_array->[$post_no-1]
+             . "\n}\nor $action(\"Postcondition "
+             . "$post_no "
+             . (ref($sub) eq 'CODE' ? '' : "for ${package}::$sub ")
+             . "failed.\");\n\n";
+      }
+    }
+    else {
+      $new_sub_text .= 
+           "do{\n".$postcond->{$post_name}
+           . "\n}\nor $action(\"Postcondition "
+           . "'$post_name' "
+           . (ref($sub) eq 'CODE' ? '' : "for ${package}::$sub ")
+           . "failed.\");\n\n";
+    }
+  }
+  
+  $new_sub_text .= ($context eq 'list' ?
+        "return \@RETURN;\n}\n" :
+        "return \$RETURN;\n}\n"
+       );
+  my ($new_sub_ref, $error) =
+    _generate_assertion_subroutine($subref, $new_sub_text);
+  
+  if ($error) {
+    croak("Compilation of assertions failed: $error.\n$new_sub_text");
+  }
+  if (ref($sub) eq 'CODE') {
+    return $new_sub_ref;
+  }
+  else {
+    no strict;
+    no warnings;
+    *{"${package}::$sub"} = $new_sub_ref;
+    use strict;
+    use warnings;
+  }
+  return $new_sub_ref;
 }
 
 sub _generate_assertion_subroutine {
-	local $@;
-	my $SUBROUTINEREF = $_[0];
-	return eval($_[1]), "$@";
+  local $@;
+  my $SUBROUTINEREF = $_[0];
+  return eval($_[1]), "$@";
+}
+
+sub _normalize_conditions {
+  my $conditions = shift;
+  my $type = shift;
+
+  if (not defined $conditions) {
+    # no conditions
+    $conditions = {};
+  }
+  elsif (ref($conditions) eq '') {
+    # a single, unnamed condition
+    $conditions = {'_' =>[$conditions]};
+  }
+  elsif (ref($conditions) eq 'ARRAY') {
+    # an array of unnamed conditions
+    my $ary = $conditions;
+    $conditions = {'_' => [@$ary]};
+  }
+  elsif (ref($conditions) eq 'HASH') {}
+  else {
+    croak("Invalid type of $type");
+  }
+
+  foreach my $name (keys %$conditions) {
+    if ($name eq '_') {
+      foreach my $cond (@{$conditions->{'_'}}) {
+        croak("Invalid unnamed $type")
+          if ref($cond) ne '';
+      }
+    }
+    else {
+      croak("Invalid $type '$name'")
+        if ref($conditions->{$name}) ne '';
+    }
+  }
+  
+  return $conditions;
 }
 
 1;
@@ -222,7 +246,7 @@ __END__
 
 =head1 NAME
 
-Sub::Assert - Design-by-contract like pre- and postconditions, etc.
+Sub::Assert - Subroutine pre- and postconditions, etc.
 
 =head1 SYNOPSIS
 
@@ -234,8 +258,11 @@ Sub::Assert - Design-by-contract like pre- and postconditions, etc.
   }
   
   assert
-         pre     => '$PARAM[0] >= 1',  # for the sake of simplicity
-         post    => '$VOID or $RETURN <= $PARAM[0]',
+         pre     => {
+            # named assertion:
+           'parameter larger than one' => '$PARAM[0] >= 1',
+         },
+         post    => '$VOID or $RETURN <= $PARAM[0]', # unnamed assertion
          sub     => 'squareroot',
          context => 'novoid',
          action  => 'carp';
@@ -252,20 +279,16 @@ Sub::Assert - Design-by-contract like pre- and postconditions, etc.
   }
 
   assert
-         pre    => '$PARAM[0] >= 1',    # for the sake of simplicity
-	 post   => '$RETURN <= $PARAM[0]',
-	 sub    => 'faultysqrt';
+         pre    => '$PARAM[0] >= 1',
+         post   => '$RETURN <= $PARAM[0]',
+         sub    => 'faultysqrt';
   
   print faultysqrt(2), "\n";  # dies with 
                               # "Postcondition 1 for main::squareroot failed."
 
-=head1 ABSTRACT
-
-  Design-by-contract like subroutine pre- and postconditions.
-
 =head1 DESCRIPTION
 
-The Sub::Assert module aims at providing design-by-contract like
+The Sub::Assert module implements
 subroutine pre- and postconditions. Furthermore, it allows restricting
 the subroutine's calling context.
 
@@ -303,8 +326,9 @@ assert() returns the assertion wrapper as a subroutine reference.
 
 This parameter specifies one or more preconditions that the data
 passed to the transformed subroutine must match. The preconditions
-may either be a string in case there's only one precondition or
-an array (reference) of strings.
+may either be a string in case there's only one, unnamed precondition,
+an array (reference) of strings in case there's many unnamed preconditions,
+or a hash reference of name/condition pairs for named preconditions.
 
 There are several special variables in the scope in which these
 preconditions are evaluated. Most importantly, @PARAM will hold
@@ -397,14 +421,14 @@ Steffen Mueller E<lt>smueller@cpan.orgE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2003-2006 Steffen Mueller
+Copyright (C) 2003-2009 Steffen Mueller
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself. 
 
 =head1 SEE ALSO
 
-L<perl>.
+L<Sub::Assert::Nothing>
 
 Look for new versions of this module on CPAN or at
 http://steffen-mueller.net
